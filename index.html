@@ -213,7 +213,8 @@ async function loadData() {
     if (res.ok) {
       const json = await res.json();
       dataSha = json.sha;
-      const decoded = atob(json.content);
+      // atob 無法正確處理中文，需要用以下方式
+      const decoded = decodeURIComponent(escape(atob(json.content)));
       const parsed = JSON.parse(decoded);
       if (parsed.todos) data.todos = parsed.todos;
       if (parsed.notes) data.notes = parsed.notes;
