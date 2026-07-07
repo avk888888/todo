@@ -1,13 +1,5 @@
 {
-  "todos": [
-    {
-      "id": 5,
-      "title": "todo 新增代辦事項 在電腦瀏覽器為繁體中文 在手機瀏覽器為亂碼 請修正",
-      "completed": false,
-      "sortOrder": 0,
-      "createdAt": "2026-07-07T15:46:36.973Z"
-    }
-  ],
+  "todos": [],
   "notes": [],
   "todoId": 6,
   "noteId": 1
