@@ -1,13 +1,5 @@
 {
-  "todos": [
-    {
-      "id": 3,
-      "title": "里肌肉蛋漢堡2",
-      "completed": false,
-      "sortOrder": 0,
-      "createdAt": "2026-07-07T15:42:02.908Z"
-    }
-  ],
+  "todos": [],
   "notes": [],
   "todoId": 4,
   "noteId": 1
