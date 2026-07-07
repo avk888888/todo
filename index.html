@@ -140,22 +140,152 @@ hr { border: none; border-top: 1px solid #eee; margin: 1.2rem 0; }
 </div>
 
 <script>
+// ====== GitHub Sync Configuration ======
+// ====== GitHub Configuration ======
+// Token 輸入一次後會存在瀏覽器 localStorage，不會上傳到 GitHub
+const GITHUB_OWNER = 'avk888888';
+const GITHUB_REPO = 'todo';
+const GITHUB_FILE = 'data.json';
+const GITHUB_BRANCH = 'main';
+
+function getGitHubToken() {
+  let token = localStorage.getItem('github_token');
+  if (!token) {
+    token = prompt('請輸入您的 GitHub Personal Access Token：\n(僅需輸入一次，後續自動儲存在此瀏覽器)');
+    if (token) {
+      localStorage.setItem('github_token', token);
+    }
+  }
+  return token;
+}
+
+let GITHUB_API;
+let GITHUB_TOKEN;
+
+function initGitHub() {
+  GITHUB_TOKEN = getGitHubToken();
+  if (!GITHUB_TOKEN) {
+    showStatus('&#9888; 需要 GitHub Token 才能同步資料', true);
+    return false;
+  }
+  GITHUB_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+  return true;
+}
+
 // ====== Data Layer ======
-const STORAGE_KEY = 'mytodo_data';
+let data = { todos: [], notes: [], todoId: 1, noteId: 1 };
+let dataSha = null;
+let loading = true;
+let lastSave = 0;
 
-function loadData() {
+function showStatus(msg, isError) {
+  let el = document.getElementById('syncStatus');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'syncStatus';
+    el.style.cssText = 'text-align:center;font-size:.8rem;margin-bottom:.5rem;padding:.3rem;border-radius:6px;';
+    document.querySelector('.app').insertBefore(el, document.querySelector('.app').firstChild);
+  }
+  el.textContent = msg;
+  el.style.background = isError ? '#fde8e8' : '#e8f5e9';
+  el.style.color = isError ? '#c62828' : '#2e7d32';
+  el.style.display = 'block';
+}
+
+async function loadData() {
+  loading = true;
+  if (!initGitHub()) {
+    loading = false;
+    renderTodos();
+    renderNotes();
+    return;
+  }
+  showStatus('&#8635; 正在載入資料...');
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return { todos: [], notes: [], todoId: 1, noteId: 1 };
+    const res = await fetch(GITHUB_API, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      dataSha = json.sha;
+      const decoded = atob(json.content);
+      const parsed = JSON.parse(decoded);
+      if (parsed.todos) data.todos = parsed.todos;
+      if (parsed.notes) data.notes = parsed.notes;
+      if (parsed.todoId) data.todoId = parsed.todoId;
+      if (parsed.noteId) data.noteId = parsed.noteId;
+      showStatus('&#9989; 資料已從 GitHub 同步');
+    } else if (res.status === 404) {
+      showStatus('&#9888; data.json 尚未建立，將在首次儲存時自動建立');
+    } else {
+      const err = await res.json();
+      showStatus('&#9888; 載入失敗: ' + (err.message || res.status), true);
+      // Fallback to localStorage
+      const local = localStorage.getItem('mytodo_local');
+      if (local) {
+        try { const p = JSON.parse(local); if (p.todos) Object.assign(data, p); } catch(e) {}
+        showStatus('&#9888; 使用本地備份資料', true);
+      }
+    }
+  } catch(e) {
+    showStatus('&#9888; 無法連接 GitHub，使用本地資料', true);
+    const local = localStorage.getItem('mytodo_local');
+    if (local) {
+      try { const p = JSON.parse(local); if (p.todos) Object.assign(data, p); } catch(e) {}
+    }
+  }
+  loading = false;
+  renderTodos();
+  renderNotes();
 }
 
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+async function saveData() {
+  // Throttle saves to avoid API rate limits
+  const now = Date.now();
+  if (now - lastSave < 1000) return;
+  lastSave = now;
+
+  // Save to localStorage as backup
+  localStorage.setItem('mytodo_local', JSON.stringify(data));
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = {
+    message: 'update data',
+    content: content,
+    branch: GITHUB_BRANCH
+  };
+  if (dataSha) body.sha = dataSha;
+
+  try {
+    const res = await fetch(GITHUB_API, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      const json = await res.json();
+      dataSha = json.content.sha;
+      showStatus('&#9989; 已儲存至 GitHub');
+    } else {
+      const err = await res.json();
+      console.error('GitHub save failed:', err);
+      showStatus('&#9888; 儲存失敗，資料已存於本地', true);
+    }
+  } catch(e) {
+    console.error('GitHub save error:', e);
+    showStatus('&#9888; 儲存失敗，資料已存於本地', true);
+  }
 }
 
-let data = loadData();
+// Load data on startup
+loadData();
 
 // ====== Todos ======
 function renderTodos() {
