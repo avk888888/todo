@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 my-todo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f0f2f5; display: flex; justify-content: center;
+  min-height: 100vh; padding: 2rem 1rem;
+}
+.app {
+  width: 100%; max-width: 520px; background: #fff;
+  border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+h1 { font-size: 1.4rem; margin-bottom: 1rem; color: #1a1a1a; }
+h2 { font-size: 1.1rem; margin-bottom: .75rem; color: #d48a1a; }
+hr { border: none; border-top: 1px solid #eee; margin: 1.2rem 0; }
+
+/* --- Input --- */
+.input-row { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.input-row input {
+  flex: 1; padding: .6rem .75rem; border: 1px solid #ddd; border-radius: 8px;
+  font-size: .95rem; outline: none; transition: border-color .2s;
+}
+.input-row input:focus { border-color: #4a90d9; }
+.input-row.todo-input input:focus { border-color: #4a90d9; }
+.input-row.note-input input:focus { border-color: #d48a1a; }
+.input-row button {
+  padding: .6rem 1rem; color: #fff; border: none; border-radius: 8px;
+  cursor: pointer; font-size: 1.1rem; transition: background .2s;
+}
+.input-row.todo-input button { background: #4a90d9; }
+.input-row.todo-input button:hover { background: #357abd; }
+.input-row.note-input button { background: #d48a1a; }
+.input-row.note-input button:hover { background: #b87514; }
+
+/* --- Todo List --- */
+.list { list-style: none; }
+.list-item {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .6rem .5rem; border-bottom: 1px solid #eee;
+  cursor: grab; user-select: none; transition: background .15s;
+}
+.list-item:last-child { border-bottom: none; }
+.list-item:hover { background: #f8f9fa; }
+.list-item.dragging { opacity: .4; background: #eef; }
+.list-item.drag-over { border-top: 2px solid #4a90d9; }
+.list-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; cursor: pointer; }
+.list-item .title {
+  flex: 1; font-size: .95rem; color: #333; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.list-item.completed .title { text-decoration: line-through; color: #aaa; }
+.list-item .btn {
+  background: none; border: none; cursor: pointer; padding: .2rem .3rem;
+  opacity: .4; transition: opacity .2s; font-size: .85rem;
+}
+.list-item .btn:hover { opacity: 1; }
+.list-item .btn-edit { color: #4a90d9; }
+.list-item .btn-del { color: #e74c3c; }
+.count { text-align: center; color: #999; font-size: .85rem; margin-top: .5rem; }
+.empty { text-align: center; color: #bbb; padding: 2rem 0; font-size: .9rem; }
+
+/* --- Edit Mode --- */
+.list-item.editing { cursor: default; padding: .4rem .5rem; }
+.list-item.editing input {
+  flex: 1; padding: .4rem .5rem; border: 1px solid #4a90d9;
+  border-radius: 6px; font-size: .95rem; outline: none;
+}
+
+/* --- Notes --- */
+.note-item {
+  border: 1px solid #eee; border-radius: 8px; margin-bottom: .4rem;
+  padding: .65rem .6rem; cursor: grab; user-select: none;
+  background: #fefdf7; transition: box-shadow .15s;
+}
+.note-item:hover { box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.note-item.dragging { opacity: .4; }
+.note-item.drag-over { border-top: 2px solid #d48a1a; }
+.note-header {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: .5rem; cursor: pointer; min-width: 0;
+}
+.note-title { font-weight: 500; color: #333; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-time { color: #bbb; font-size: .75rem; white-space: nowrap; }
+.note-preview { color: #999; font-size: .8rem; margin: .2rem 0 0 1.6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-item .btn-del { align-self: flex-start; }
+
+/* --- Note Expanded --- */
+.note-item.expanded {
+  flex-direction: column; cursor: default; background: #fffbf0;
+  border-color: #f0c060;
+}
+.note-item.expanded input,
+.note-item.expanded textarea {
+  width: 100%; padding: .5rem; border: 1px solid #f0c060;
+  border-radius: 6px; font-size: .9rem; outline: none; font-family: inherit;
+}
+.note-item.expanded textarea { resize: vertical; line-height: 1.5; margin-top: .4rem; }
+.note-actions { display: flex; justify-content: flex-end; gap: .4rem; margin-top: .4rem; }
+.note-actions button {
+  padding: .35rem .8rem; border: none; border-radius: 6px;
+  cursor: pointer; font-size: .8rem; transition: background .2s;
+}
+.btn-save-note { background: #d48a1a; color: #fff; }
+.btn-save-note:hover { background: #b87514; }
+.btn-cancel-note { background: #eee; color: #666; }
+.btn-cancel-note:hover { background: #ddd; }
+
+/* --- Drag Handle --- */
+.drag-handle { color: #ccc; font-size: .85rem; cursor: grab; user-select: none; padding: 0 .2rem; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <h1>📋 my-todo</h1>
+
+  <!-- Todos -->
+  <div class="input-row todo-input">
+    <input id="todoInput" placeholder="新增代辦事項..." autofocus>
+    <button onclick="addTodo()">＋</button>
+  </div>
+  <ul class="list" id="todoList"></ul>
+  <p class="count" id="todoCount"></p>
+
+  <hr>
+
+  <!-- Notes -->
+  <h2>📝 記事本</h2>
+  <div class="input-row note-input">
+    <input id="noteInput" placeholder="新增記事標題...">
+    <button onclick="addNote()">＋</button>
+  </div>
+  <div id="noteList"></div>
+  <p class="count" id="noteCount"></p>
+</div>
+
+<script>
+// ====== Data Layer ======
+const STORAGE_KEY = 'mytodo_data';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { todos: [], notes: [], todoId: 1, noteId: 1 };
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+
+// ====== Todos ======
+function renderTodos() {
+  const list = document.getElementById('todoList');
+  const count = document.getElementById('todoCount');
+  if (data.todos.length === 0) {
+    list.innerHTML = '<p class="empty">還沒有代辦事項，新增一則吧！</p>';
+    count.textContent = '';
+    return;
+  }
+  const sorted = [...data.todos].sort((a,b) => a.sortOrder - b.sortOrder);
+  list.innerHTML = sorted.map(t => `
+    <li class="list-item ${t.completed ? 'completed' : ''}"
+        draggable="true"
+        data-id="${t.id}"
+        data-type="todo"
+        ondragstart="onDragStart(event)"
+        ondragend="onDragEnd(event)"
+        ondragover="onDragOver(event)"
+        ondrop="onDrop(event)">
+      <span class="drag-handle">⠿</span>
+      <input type="checkbox" ${t.completed ? 'checked' : ''}
+             onchange="toggleTodo(${t.id}, this.checked)">
+      <span class="title">${escHtml(t.title)}</span>
+      <button class="btn btn-edit" onclick="editTodo(${t.id})">✏️</button>
+      <button class="btn btn-del" onclick="deleteTodo(${t.id})">🗑️</button>
+    </li>
+  `).join('');
+  count.textContent = `${data.todos.length} 項代辦`;
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const title = input.value.trim();
+  if (!title) return;
+  data.todos.push({
+    id: data.todoId++,
+    title,
+    completed: false,
+    sortOrder: data.todos.length,
+    createdAt: new Date().toISOString()
+  });
+  input.value = '';
+  saveData(); renderTodos();
+}
+
+function toggleTodo(id, completed) {
+  const t = data.todos.find(x => x.id === id);
+  if (t) { t.completed = completed; saveData(); renderTodos(); }
+}
+
+function editTodo(id) {
+  const t = data.todos.find(x => x.id === id);
+  if (!t) return;
+  const newTitle = prompt('修改代辦事項：', t.title);
+  if (newTitle && newTitle.trim()) {
+    t.title = newTitle.trim();
+    saveData(); renderTodos();
+  }
+}
+
+function deleteTodo(id) {
+  data.todos = data.todos.filter(x => x.id !== id);
+  saveData(); renderTodos();
+}
+
+// ====== Notes ======
+function renderNotes() {
+  const list = document.getElementById('noteList');
+  const count = document.getElementById('noteCount');
+  if (data.notes.length === 0) {
+    list.innerHTML = '<p class="empty">還沒有記事，新增一則吧！</p>';
+    count.textContent = '';
+    return;
+  }
+  const sorted = [...data.notes].sort((a,b) => a.sortOrder - b.sortOrder);
+  list.innerHTML = sorted.map(n => {
+    const preview = n.content.length > 50 ? n.content.slice(0,50)+'...' : n.content;
+    const time = new Date(n.updatedAt).toLocaleString('zh-TW', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return `
+    <div class="note-item" draggable="true"
+         data-id="${n.id}" data-type="note"
+         ondragstart="onDragStart(event)"
+         ondragend="onDragEnd(event)"
+         ondragover="onDragOver(event)"
+         ondrop="onDrop(event)">
+      <div class="note-header" onclick="expandNote(${n.id})">
+        <span class="drag-handle">⠿</span>
+        <span class="note-title">📝 ${escHtml(n.title)}</span>
+        <span class="note-time">${time}</span>
+        <button class="btn btn-del" onclick="event.stopPropagation(); deleteNote(${n.id})">🗑️</button>
+      </div>
+      ${preview ? `<p class="note-preview">${escHtml(preview)}</p>` : ''}
+    </div>`;
+  }).join('');
+  count.textContent = `${data.notes.length} 則記事`;
+}
+
+function addNote() {
+  const input = document.getElementById('noteInput');
+  const title = input.value.trim();
+  if (!title) return;
+  data.notes.push({
+    id: data.noteId++,
+    title,
+    content: '',
+    sortOrder: data.notes.length,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+  input.value = '';
+  saveData(); renderNotes();
+}
+
+function expandNote(id) {
+  const n = data.notes.find(x => x.id === id);
+  if (!n) return;
+  // Find the DOM element
+  const items = document.querySelectorAll('.note-item');
+  let targetEl = null;
+  for (const el of items) {
+    if (parseInt(el.dataset.id) === id) {
+      targetEl = el; break;
+    }
+  }
+  if (!targetEl) return;
+
+  // Close any other expanded notes
+  document.querySelectorAll('.note-item.expanded').forEach(el => {
+    if (el !== targetEl) {
+      const eid = parseInt(el.dataset.id);
+      const en = data.notes.find(x => x.id === eid);
+      if (en) {
+        const et = el.querySelector('.note-edit-title');
+        const ec = el.querySelector('.note-edit-content');
+        if (et && ec) { en.title = et.value; en.content = ec.value; en.updatedAt = new Date().toISOString(); }
+      }
+      el.classList.remove('expanded');
+      el.draggable = true;
+      el.querySelector('.drag-handle').style.display = '';
+    }
+  });
+
+  targetEl.classList.add('expanded');
+  targetEl.draggable = false;
+  const handle = targetEl.querySelector('.drag-handle');
+  if (handle) handle.style.display = 'none';
+
+  targetEl.innerHTML = `
+    <input class="note-edit-title" value="${escHtml(n.title)}" placeholder="標題">
+    <textarea class="note-edit-content" rows="3" placeholder="內容...">${escHtml(n.content)}</textarea>
+    <div class="note-actions">
+      <button class="btn-cancel-note" onclick="collapseNote(${n.id})">取消</button>
+      <button class="btn-save-note" onclick="saveNote(${n.id})">儲存</button>
+    </div>`;
+
+  const titleInput = targetEl.querySelector('.note-edit-title');
+  const contentInput = targetEl.querySelector('.note-edit-content');
+  if (titleInput) titleInput.focus();
+}
+
+function saveNote(id) {
+  const n = data.notes.find(x => x.id === id);
+  if (!n) return;
+  const els = document.querySelectorAll('.note-item.expanded');
+  for (const el of els) {
+    if (parseInt(el.dataset.id) === id) {
+      const title = el.querySelector('.note-edit-title')?.value || '';
+      const content = el.querySelector('.note-edit-content')?.value || '';
+      n.title = title.trim() || n.title;
+      n.content = content;
+      n.updatedAt = new Date().toISOString();
+      break;
+    }
+  }
+  saveData(); renderNotes();
+}
+
+function collapseNote(id) {
+  renderNotes();
+}
+
+function deleteNote(id) {
+  if (!confirm('確定刪除這則記事？')) return;
+  data.notes = data.notes.filter(x => x.id !== id);
+  saveData(); renderNotes();
+}
+
+// ====== Drag & Drop ======
+let dragSrcId = null;
+let dragSrcType = null;
+
+function onDragStart(e) {
+  dragSrcId = parseInt(e.target.closest('[data-id]').dataset.id);
+  dragSrcType = e.target.closest('[data-type]').dataset.type;
+  e.target.closest('[data-id]').classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  const el = e.target.closest('[data-id]');
+  if (el) el.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.target.closest('[data-id]');
+  if (target && parseInt(target.dataset.id) !== dragSrcId) {
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  }
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const targetEl = e.target.closest('[data-id]');
+  if (!targetEl || !dragSrcId || parseInt(targetEl.dataset.id) === dragSrcId) return;
+  const targetId = parseInt(targetEl.dataset.id);
+  const targetType = targetEl.dataset.type;
+  if (dragSrcType !== targetType) return;
+
+  const items = dragSrcType === 'todo' ? data.todos : data.notes;
+  const srcIdx = items.findIndex(x => x.id === dragSrcId);
+  const tgtIdx = items.findIndex(x => x.id === targetId);
+
+  if (srcIdx === -1 || tgtIdx === -1) return;
+
+  const [moved] = items.splice(srcIdx, 1);
+  items.splice(tgtIdx, 0, moved);
+  items.forEach((item, i) => item.sortOrder = i);
+
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  dragSrcId = null;
+  saveData();
+  dragSrcType === 'todo' ? renderTodos() : renderNotes();
+}
+
+// ====== Utils ======
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ====== Enter key support ======
+document.getElementById('todoInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTodo();
+});
+document.getElementById('noteInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addNote();
+});
+
+// ====== Init ======
+renderTodos();
+renderNotes();
+</script>
+</body>
+</html>
