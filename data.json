@@ -1,13 +1,5 @@
 {
-  "todos": [
-    {
-      "id": 1,
-      "title": "丸佳烤吐司店買早餐:里肌肉蛋漢堡2 原味蛋餅1",
-      "completed": false,
-      "sortOrder": 0,
-      "createdAt": "2026-07-07T15:35:16.180Z"
-    }
-  ],
+  "todos": [],
   "notes": [],
   "todoId": 2,
   "noteId": 1
