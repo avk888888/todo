@@ -1,13 +1,5 @@
 {
-  "todos": [
-    {
-      "id": 1,
-      "title": "買早餐:丸佳 里肌肉蛋漢堡2",
-      "completed": false,
-      "sortOrder": 0,
-      "createdAt": "2026-07-07T16:03:00.093Z"
-    }
-  ],
+  "todos": [],
   "notes": [],
   "todoId": 3,
   "noteId": 1
