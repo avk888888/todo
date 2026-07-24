@@ -10,7 +10,7 @@
     {
       "id": 4,
       "title": "週二海生館",
-      "completed": false,
+      "completed": true,
       "sortOrder": 1,
       "createdAt": "2026-07-08T06:26:40.379Z"
     }
